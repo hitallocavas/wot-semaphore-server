@@ -14,8 +14,11 @@ class Semaphore {
     this.name = name;
     this.ledResource = `wot-semaphore/${name}/led`;
     this.sonarResource = `wot-semaphore/${name}/sonar`;
+    this.moveResource = `wot-semaphore/${name}/move`;    
     this.carCrossing = false;
-    this.carQtt = 0
+    this.carQtt = 0;
+    this.personWaiting = false;
+    this.peopleQtt = 0;
   }
 }
 
@@ -26,17 +29,27 @@ const semaphores = [
 
 function handleMessage(topic, message, ws) {
   console.log(message)
-  const distance = Number.parseFloat(message)
-  const semaphore = semaphores.find(s => s.sonarResource == topic)
+  const semaphore = semaphores.find(s => s.sonarResource == topic || s.moveResource == topic)
 
-  if(!semaphore.carCrossing && distance < 10) {
-    semaphore.carCrossing = true;
-    semaphore.carQtt++
-    ws.send(`{"semaphore": "${semaphore.name}", "carQtt":${semaphore.carQtt}}`)
-  } else if(semaphore.carCrossing && distance >= 10) {
-    semaphore.carCrossing = false;
+  if(topic == semaphore.sonarResource) {
+    const distance = Number.parseFloat(message)
+    if(!semaphore.carCrossing && distance < 10) {
+      semaphore.carCrossing = true;
+      semaphore.carQtt++
+      ws.send(`{"semaphore": "${semaphore.name}", "carQtt":${semaphore.carQtt}}`)
+    } else if(semaphore.carCrossing && distance >= 10) {
+      semaphore.carCrossing = false;
+    }
+  } else {
+    const personArrive = Number.parseFloat(message)
+    if(!semaphore.personWaiting && personArrive == 1) {
+      semaphore.personWaiting = true;      
+      semaphore.peopleQtt++
+      ws.send(`{"semaphore": "${semaphore.name}", "peopleQtt":${semaphore.peopleQtt}}`)
+    } else if(semaphore.personWaiting && distance == 0) {
+      semaphore.personWaiting = false;
+    }
   }
-
   // console.log(semaphore.carQtt)
 }
 
