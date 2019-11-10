@@ -51,7 +51,7 @@ function handleMessage(topic, message, ws) {
   }
 
   console.log(semaphore.carQtt)
-  ws.send(semaphore.carQtt)
+  ws.send({"semaphore": semaphore.name, "carQtt":semaphore.carQtt})
 }
 
 // Comunication
