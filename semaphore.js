@@ -4,7 +4,7 @@ const path = require('path')
 const app = express()
 const mqtt = require('mqtt')
 const client  = mqtt.connect('mqtt://broker.mqttdashboard.com')
-const WebSocket = require('ws')
+const WebSocket = require('ws') 
 const wss = new WebSocket.Server({ port: 8888 })
 var bodyParser = require('body-parser')
 var sleep = require('system-sleep')
@@ -21,6 +21,14 @@ function semaphoreBehavior() {
   }
 }
 
+function bin2string(array){
+	var result = "";
+	for(var i = 0; i < array.length; ++i){
+		result+= (String.fromCharCode(array[i]));
+	}
+	return result;
+}
+
 // Comunication
 client.on('connect', function(topic,message){
   console.log('MQTT connected');
@@ -34,7 +42,7 @@ wss.on('connection', function(ws) {
     client.on('message', function (topic, message) {
       const obj = new Object()
       obj['topic'] = topic
-      obj['message'] = message
+      obj['message'] = bin2string(message)
       ws.send(JSON.stringify(obj))
     })
 })
