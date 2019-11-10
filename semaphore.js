@@ -24,36 +24,20 @@ const semaphores = [
   new Semaphore('snd')
 ]
 
-// Logic
-function semaphoreBehavior(semaphore, ws) {
-  while(true){
-    client.publish(semaphore.ledResource, 'G')
-    ws.send({"color": "G"})
-    sleep(3000);
-    client.publish(semaphore.ledResource, 'Y')
-    ws.send({"color": "Y"})    
-    sleep(1000);
-    client.publish(semaphore.ledResource, 'R')
-    ws.send({"color": "G"})
-    sleep(3000);
-  }
-}
-
 function handleMessage(topic, message, ws) {
-  var uint8array = new TextEncoder("utf-8").encode("¢");
-  var distanceStr = new TextDecoder("utf-8").decode(message['data'])
-  const distance = Number.parseFloat(distanceStr)
+  console.log(message)
+  const distance = Number.parseFloat(message)
   const semaphore = semaphores.find(s => s.sonarResource == topic)
 
   if(!semaphore.carCrossing && distance < 10) {
     semaphore.carCrossing = true;
     semaphore.carQtt++
+    ws.send(`{"semaphore": "${semaphore.name}", "carQtt":${semaphore.carQtt}}`)
   } else if(semaphore.carCrossing && distance >= 10) {
     semaphore.carCrossing = false;
   }
 
-  console.log(semaphore.carQtt)
-  ws.send({"semaphore": semaphore.name, "carQtt":semaphore.carQtt})
+  // console.log(semaphore.carQtt)
 }
 
 // Comunication
@@ -61,12 +45,28 @@ client.on('connect', function(topic,message){
   console.log('MQTT connected');
   semaphores.forEach(s => client.subscribe(s.sonarResource))
 })
+ 
 
 wss.on('connection', function(ws) {
     console.log('WS connected')
-    semaphores.forEach(s => semaphoreBehavior(s, ws))
+    
+    for (const s of semaphores)
+      setInterval(() => {
+        client.publish(s.ledResource, 'G')
+        ws.send(`{"semaphore":"${s.name}","color":"G"}`)
+        sleep(3000);
+        client.publish(s.ledResource, 'Y')
+        ws.send(`{"semaphore":"${s.name}","color":"Y"}`)
+        sleep(1000);
+        client.publish(s.ledResource, 'R')
+        ws.send(`{"semaphore":"${s.name}","color":"R"}`)
+        // sleep(3000);
+      }, 0);
+
     client.on('message', function (topic, message) {
-      handleMessage(topic, message, ws)
+      
+      // console.log(message.toString())
+      handleMessage(topic, message.toString(), ws)
     })
 })
 
