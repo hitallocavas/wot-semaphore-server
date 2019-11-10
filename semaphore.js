@@ -3,6 +3,8 @@ const path = require('path')
 const app = express()
 const mqtt = require('mqtt')
 var bodyParser = require('body-parser')
+var sleep = require('system-sleep');
+
 
 // configure the app to use bodyParser()
 app.use(bodyParser.urlencoded({
@@ -37,6 +39,16 @@ const client  = mqtt.connect('mqtt://broker.mqttdashboard.com')
     console.log(topic.toString() + ": " + message)
   })
 
+  client.on('connect', function(topic,message){
+    while(true){
+      client.publish('wot-semaphore/snd/led', 'R')
+      sleep(3000);
+      client.publish('wot-semaphore/snd/led', 'Y')
+      sleep(2000);
+      client.publish('wot-semaphore/snd/led', 'G')
+      sleep(3000);
+    }
+  })
 app.use(function(req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
