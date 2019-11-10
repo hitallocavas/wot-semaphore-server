@@ -1,49 +1,55 @@
-// Config
-const express = require('express')
-const path = require('path')
-const app = express()
-const mqtt = require('mqtt')
-const client  = mqtt.connect('mqtt://broker.mqttdashboard.com')
-const WebSocket = require('ws') 
-const wss = new WebSocket.Server({ port: 8888 })
-var bodyParser = require('body-parser')
-var sleep = require('system-sleep')
+const express   = require('express')
+const path      = require('path')
+const WebSocket = require('ws')
+const mqtt      = require('mqtt')
+var bodyParser  = require('body-parser')
+var sleep       = require('system-sleep')
 
-// Logic
-function semaphoreBehavior() {
-  while(true){
-    client.publish('wot-semaphore/snd/led', 'G')
-    sleep(3000);
-    client.publish('wot-semaphore/snd/led', 'Y')
-    sleep(1000);
-    client.publish('wot-semaphore/snd/led', 'R')
-    sleep(3000);
+const app       = express()
+const client    = mqtt.connect('mqtt://broker.mqttdashboard.com') 
+const wss       = new WebSocket.Server({ port: 8888 })
+
+class Semaphore {
+  constructor(name){
+    this.name = name;
+    this.ledResource = `wot-semaphore/${name}/led`;
+    this.sonarResource = `wot-semaphore/${name}/sonar`;
   }
 }
 
-function bin2string(array){
-	var result = "";
-	for(var i = 0; i < array.length; ++i){
-		result+= (String.fromCharCode(array[i]));
-	}
-	return result;
+const semaphores = [
+  new Semaphore('fst'),
+  new Semaphore('snd')
+]
+
+// Logic
+function semaphoreBehavior(ws) {
+  while(true){
+    client.publish('wot-semaphore/snd/led', 'G')
+    ws.send({"color": "G"})
+    sleep(3000);
+    client.publish('wot-semaphore/snd/led', 'Y')
+    ws.send({"color": "Y"})    
+    sleep(1000);
+    client.publish('wot-semaphore/snd/led', 'R')
+    ws.send({"color": "G"})
+    sleep(3000);
+  }
 }
 
 // Comunication
 client.on('connect', function(topic,message){
   console.log('MQTT connected');
-  client.subscribe('wot-semaphore/fst/sonar')
-  client.subscribe('wot-semaphore/snd/sonar')
-  semaphoreBehavior()
+  semaphores.forEach(s => client.subscribe(s.sonarResource))
 })
 
 wss.on('connection', function(ws) {
-    console.log('WS connected')  
+    console.log('WS connected')
+    semaphoreBehavior(ws)
     client.on('message', function (topic, message) {
-      const obj = new Object()
-      obj['topic'] = topic
-      obj['message'] = bin2string(message)
-      ws.send(JSON.stringify(obj))
+      const msg = JSON.stringify({"topic": topic, "message": String(message)});
+      console.log(msg)
+      ws.send(msg)
     })
 })
 
@@ -55,14 +61,14 @@ app.use(bodyParser.json());
 app.post('/fst', function (req, res) {
   var color = req.body.color;
   console.log(color);
-  client.publish('wot-semaphore/fst/led', color)
+  client.publish(semaphores[0], color)
   res.sendStatus(200);
 });
 
 app.post('/snd', function (req, res) {
   var color = req.body.color
   console.log(color);
-  client.publish('wot-semaphore/snd/led', color)
+  client.publish(semaphores[1], color)
   res.sendStatus(200);
 });
 
