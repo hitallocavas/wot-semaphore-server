@@ -40,7 +40,9 @@ function semaphoreBehavior(semaphore, ws) {
 }
 
 function handleMessage(topic, message, ws) {
-  const distance = Number(String(message['data']))
+  var uint8array = new TextEncoder("utf-8").encode("¢");
+  var distanceStr = new TextDecoder("utf-8").decode(message['data'])
+  const distance = Number.parseFloat(distanceStr)
   const semaphore = semaphores.find(s => s.sonarResource == topic)
 
   if(!semaphore.carCrossing && distance < 10) {
