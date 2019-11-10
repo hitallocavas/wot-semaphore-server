@@ -5,7 +5,7 @@ const app = express()
 const mqtt = require('mqtt')
 const client  = mqtt.connect('mqtt://broker.mqttdashboard.com')
 const WebSocket = require('ws')
-const wss = new WebSocket.Server({ port: 8080 })
+const wss = new WebSocket.Server({ port: 8888 })
 var bodyParser = require('body-parser')
 var sleep = require('system-sleep')
 
@@ -35,7 +35,7 @@ wss.on('connection', function(ws) {
       const obj = new Object()
       obj['topic'] = topic
       obj['message'] = message
-      ws.send(JSON.stringifyonj)
+      ws.send(JSON.stringify(obj))
     })
 })
 
