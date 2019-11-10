@@ -10,10 +10,12 @@ const client    = mqtt.connect('mqtt://broker.mqttdashboard.com')
 const wss       = new WebSocket.Server({ port: 8888 })
 
 class Semaphore {
-  constructor(name){
+  constructor(name, carCrossing){
     this.name = name;
     this.ledResource = `wot-semaphore/${name}/led`;
     this.sonarResource = `wot-semaphore/${name}/sonar`;
+    this.carCrossing = false;
+    this.carQtt = 0
   }
 }
 
@@ -23,18 +25,33 @@ const semaphores = [
 ]
 
 // Logic
-function semaphoreBehavior(ws) {
+function semaphoreBehavior(semaphore, ws) {
   while(true){
-    client.publish('wot-semaphore/snd/led', 'G')
+    client.publish(semaphore.ledResource, 'G')
     ws.send({"color": "G"})
     sleep(3000);
-    client.publish('wot-semaphore/snd/led', 'Y')
+    client.publish(semaphore.ledResource, 'Y')
     ws.send({"color": "Y"})    
     sleep(1000);
-    client.publish('wot-semaphore/snd/led', 'R')
+    client.publish(semaphore.ledResource, 'R')
     ws.send({"color": "G"})
     sleep(3000);
   }
+}
+
+function handleMessage(topic, message, ws) {
+  const distance = Number(String(message))
+  const semaphore = semaphores.find(s => s.sonarResource == topic)
+
+  if(!semaphore.carCrossing && distance < 10) {
+    semaphore.carCrossing = true;
+    semaphore.carQtt++
+  } else if(semaphore.carCrossing && distance >= 10) {
+    semaphore.carCrossing = false;
+  }
+
+  console.log(semaphore.carQtt)
+  ws.send(semaphore.carQtt)
 }
 
 // Comunication
@@ -45,11 +62,9 @@ client.on('connect', function(topic,message){
 
 wss.on('connection', function(ws) {
     console.log('WS connected')
-    semaphoreBehavior(ws)
+    semaphores.forEach(s => semaphoreBehavior(s, ws))
     client.on('message', function (topic, message) {
-      const msg = JSON.stringify({"topic": topic, "message": String(message)});
-      console.log(msg)
-      ws.send(msg)
+      handleMessage(topic, message, ws)
     })
 })
 
